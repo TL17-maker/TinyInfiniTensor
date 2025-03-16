@@ -20,8 +20,10 @@ namespace infini
         size_t offsetA = allocator.alloc(a->getBytes());
         size_t offsetB = allocator.alloc(b->getBytes());
         size_t offsetC = allocator.alloc(c->getBytes());
+        allocator.info();
         // free b, then allocate d
         allocator.free(offsetB, b->getBytes());
+        allocator.info();
         size_t offsetD = allocator.alloc(d->getBytes());
         // expected to be a->d->c
         EXPECT_EQ(offsetB, offsetD);

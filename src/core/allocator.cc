@@ -27,13 +27,29 @@ namespace infini
     {
         IT_ASSERT(this->ptr == nullptr);
         // pad the size to the multiple of alignment
-        size = this->getAlignedSize(size);
+        size = this->getAlignedSize(size); // 对齐后要分配的大小。
 
         // =================================== 作业 ===================================
         // TODO: 设计一个算法来分配内存，返回起始地址偏移量
         // =================================== 作业 ===================================
+        size_t offset = 0;
+        std::cout<<"alloc: "<<size<<std::endl;
+        this->used += size;
+        for(auto& pair: freed_blocks) {
+            std::cout<<"block: "<<pair.first<<"  size: "<<pair.second<<std::endl;
+            if(pair.second >= size) {
+                pair.second = 0;
+                offset = pair.first;
+                return offset;
+            }
 
-        return 0;
+        }
+        
+        freed_blocks[this->peak] = 0;
+        offset = this->peak;
+        this->peak += size;
+
+        return offset;
     }
 
     void Allocator::free(size_t addr, size_t size)
@@ -44,6 +60,19 @@ namespace infini
         // =================================== 作业 ===================================
         // TODO: 设计一个算法来回收内存
         // =================================== 作业 ===================================
+        std::cout<<"free "<< addr << "  size : " << size<<std::endl;
+        // freed_blocks[addr] = size;
+        auto end = freed_blocks.rbegin();
+        
+        if(addr == end->first) {
+            std::cout<<"free last one"<<std::endl;
+            freed_blocks.erase(addr);
+            peak -= size;
+            used -= size;
+        }else {
+            freed_blocks[addr] = size;
+            used -= size;
+        }
     }
 
     void *Allocator::getPtr()
