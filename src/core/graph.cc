@@ -158,14 +158,20 @@ namespace infini
         for(auto tensor: tensors) {
             size_t offset = allocator.alloc(tensor->getBytes());
             offsets.push_back(offset);
+            std::cout<<">>>>>>>tensor: "<<tensor<<std::endl;
         }
         // 统一分配全部内存
-        auto start = reinterpret_cast<uint64_t*>(allocator.getPtr());
+        auto start = reinterpret_cast<char*>(allocator.getPtr());
+        std::cout<<"start:"<<start<<std::endl;
+        for(auto off: offsets){
+            std::cout<<"off: "<<off<<std::endl;
+        }
         // 绑定内存
         for(size_t i = 0; i < offsets.size(); i++){
             Blob blob = make_ref<BlobObj>(runtime, start + offsets[i]);
             tensors[i]->setDataBlob(blob);
         }
+        allocator.info();
 
         
 

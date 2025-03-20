@@ -17,6 +17,13 @@ optional<vector<Shape>> ConcatObj::inferShape(const TensorVec &inputs) {
     // TODO：修改 dims，返回正确的 concat 后的 shape
     // REF: https://onnx.ai/onnx/operators/onnx__Concat.html#concat-13
     // =================================== 作业 ===================================
+    int axis = getDim();
+    if(axis < 0) {
+        axis += rank;
+    }
+    for(auto iter = inputs.begin() + 1; iter!=inputs.end(); iter++) {
+        dims[axis] += (*iter)->getDims()[axis];
+    }
 
     return {{dims}};
 }
