@@ -98,6 +98,56 @@ namespace infini
         return this->sorted = true;
     }
 
+    vector<int> getTransposePermute(Operator op) {
+        std::cout<<"get premute"<<std::endl;
+        auto transposeObj =  std::dynamic_pointer_cast<TransposeObj>(op);
+        return transposeObj->getPermute();
+    }
+
+    bool isTrans(vector<int> permute) {
+        std::cout<<"chekc permute"<<std::endl;
+        // 检查是不是交换后两个维度。
+        int size = permute.size();
+        vector<int> expectedPermute(size, 0);
+        for(int i = 0; i < size; i++) {
+            expectedPermute[i] = i;
+        }
+        expectedPermute[size - 1] = size - 2;
+        expectedPermute[size - 2] = size - 1;
+        return expectedPermute == permute;
+    }
+
+    void GraphObj::removeOp(Operator &op) {
+        for(auto &input: op->getInputs()) {
+            if(input) {
+                // 删除 input的target
+                input->removeTarget(op);
+                auto succOps = op->getSuccessors();
+                for(auto sucOp: succOps) {
+                    // input的target变成 op的后继
+                    input->addTarget(sucOp);
+                    // op后继的前驱不在是op
+                    sucOp->removePredecessors(op);
+                    // op后继的输入变成op的输入
+                    for(auto &output: op->getOutputs()){
+                        sucOp->replaceInput(output, input);
+                    }
+                    
+                    // op的后继的前驱变成op的前驱
+                    for(auto preOps: op->getPredecessors()) {
+                        sucOp->addPredecessors(preOps);
+                    }
+                }
+            }
+        }
+
+        for(auto &output: op->getOutputs()) {
+            if(output) {
+                removeTensor(output);
+            }
+        }
+    }
+
     void GraphObj::optimize()
     {
         // =================================== 作业 ===================================
@@ -106,6 +156,54 @@ namespace infini
         // 1. 去除冗余的算子（例如，两个相邻的算子都是 transpose 算子，且做的是相反的操作，可以将其全部删除）
         // 2. 合并算子（例如，矩阵乘算子中含有属性transA、transB，如果其输入存在transpose，且对最后两个维度做交换，就可以将transpose融入到矩阵乘算子的属性中去）
         // =================================== 作业 ===================================
+        // 1. 如果相邻的transpose的perm相同则可以删除
+        // 2. 如果矩阵乘的上一个算子是transpose且transpose交换的是后两个维度，则transpose可以删除。
+        int opSize = ops.size();
+        int cur = 1;
+        vector<Operator> needRemoveOperators;
+        while(cur < opSize) {
+            int pre = cur - 1;
+            OpType curOpType = ops[cur]->getOpType();
+            OpType preOpType = ops[pre]->getOpType();
+            if( curOpType == OpType::Transpose && preOpType == OpType::Transpose) {
+                vector<int> curPermte = infini::getTransposePermute(ops[cur]);
+                vector<int> prePermte = infini::getTransposePermute(ops[pre]);
+                if(curPermte == prePermte) {
+                    // 删除两个transpose
+                    needRemoveOperators.emplace_back(ops[pre]);
+                    needRemoveOperators.emplace_back(ops[cur]);
+                    removeOp(ops[pre]);
+                    removeOp(ops[cur]);
+                    cur += 1;
+                }
+
+            }else if(curOpType == OpType::MatMul && preOpType == OpType::Transpose) {
+                vector<int> prePermte = infini::getTransposePermute(ops[pre]);
+                if(infini::isTrans(prePermte)){
+                    if(ops[cur]->getInputs()[0]->getSource() == ops[pre]) {
+                        needRemoveOperators.emplace_back(ops[pre]);
+                        auto matmulObj =  std::dynamic_pointer_cast<MatmulObj>(ops[cur]);
+                        matmulObj->setTransA(true);
+                        removeOp(ops[pre]);
+
+
+                    }else if(ops[cur]->getInputs()[1]->getSource() == ops[pre]) {
+                        needRemoveOperators.emplace_back(ops[pre]);
+                        auto matmulObj =  std::dynamic_pointer_cast<MatmulObj>(ops[cur]);
+                        matmulObj->setTransB(true);
+                        removeOp(ops[pre]);
+                    }
+                }
+
+            }
+            cur += 1;
+        }
+        // 删除op
+        for(auto op: needRemoveOperators) {
+            removeOperator(op);
+        }
+
+
     }
 
     Tensor GraphObj::getTensor(int fuid) const

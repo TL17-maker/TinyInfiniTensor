@@ -2,6 +2,8 @@
 #include "core/allocator.h"
 #include "core/operator.h"
 #include "core/tensor.h"
+#include "operators/matmul.h"
+#include "operators/transpose.h"
 #include <algorithm>
 #include <cstdint>
 
@@ -25,11 +27,13 @@ namespace infini
         Tensor addTensor(Shape dim, DataType dtype = DataType::Float32);
         Tensor addTensor(const Tensor &tensor);
         TensorVec addTensor(const TensorVec &tensors);
+        void removeOp(Operator &op);
         void removeOperator(Operator op)
         {
             auto it = std::find(ops.begin(), ops.end(), op);
             if (it != ops.end())
                 ops.erase(it);
+            std::cout<<"remove op: "<<op<<std::endl;
         }
 
         void removeTensor(Tensor tensor)
